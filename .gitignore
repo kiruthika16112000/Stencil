@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+
+# PyInstaller build output
+build/
+dist/
+*.spec
+
+# Local user data (registered accounts)
+data/

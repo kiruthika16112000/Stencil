@@ -3,10 +3,26 @@ from tkinter import messagebox
 import customtkinter as ctk
 
 from app.services.auth_service import AuthError
-from app.services.password_policy import password_strength
+from app.ui.assets import load_adaptive_logo
+from app.ui.common import (
+    ADAPTIVE_TEXT_COLOR,
+    BaseFrame,
+    ERROR_TEXT_COLOR,
+    HINT_TEXT_COLOR,
+    ICON_TEXT_COLOR,
+    PASSWORD_HINT,
+    PasswordEntry,
+    make_strength_label,
+    update_strength_label,
+)
+from app.ui.settings_screen import SettingsFrame
+from app.ui.variant_screen import ManageVariantFrame, VariantSelectionFrame
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
+
+BASE_WINDOW_WIDTH = 380
+MAX_WIDGET_SCALE = 1.6
 
 SECURITY_QUESTIONS = [
     "What is your favorite pet's name?",
@@ -15,90 +31,25 @@ SECURITY_QUESTIONS = [
     "What was the name of your first school?",
 ]
 
-PASSWORD_HINT = "At least 8 characters, with uppercase, lowercase and a digit."
-
-# First value applies in light mode, second in dark mode (CustomTkinter convention).
-ADAPTIVE_TEXT_COLOR = ("gray10", "gray90")
-ICON_TEXT_COLOR = ADAPTIVE_TEXT_COLOR
-HINT_TEXT_COLOR = ("gray40", "gray65")
-ERROR_TEXT_COLOR = ("#c0392b", "#ff6347")
-
-STRENGTH_DISPLAY = {
-    "weak": ("Weak", ERROR_TEXT_COLOR),
-    "medium": ("Medium", ("#b8860b", "#ffa500")),
-    "strong": ("Strong", ("#2e7d32", "#4caf50")),
-}
-
-
-def make_strength_label(master):
-    return ctk.CTkLabel(master, text="", font=ctk.CTkFont(size=11))
-
-
-def update_strength_label(label, password):
-    if not password:
-        label.configure(text="")
-        return
-
-    level = password_strength(password)
-    text, color = STRENGTH_DISPLAY[level]
-    label.configure(text=f"Password strength: {text}", text_color=color)
-
-
 COLOR_THEMES = {
     "Blue": "blue",
     "Green": "green",
     "Dark Blue": "dark-blue",
 }
 
-
-class PasswordEntry(ctk.CTkFrame):
-    """An entry + Show/Hide toggle button, usable anywhere a plain CTkEntry is."""
-
-    def __init__(self, master, placeholder_text="", width=260, **kwargs):
-        super().__init__(master, fg_color="transparent")
-
-        self._visible = False
-
-        self.entry = ctk.CTkEntry(self, placeholder_text=placeholder_text, show="*", width=width - 56, **kwargs)
-        self.entry.pack(side="left")
-
-        self.toggle_button = ctk.CTkButton(self, text="Show", width=50, command=self._toggle)
-        self.toggle_button.pack(side="left", padx=(6, 0))
-
-    def _toggle(self):
-        self._visible = not self._visible
-        self.entry.configure(show="" if self._visible else "*")
-        self.toggle_button.configure(text="Hide" if self._visible else "Show")
-
-    def get(self):
-        return self.entry.get()
-
-    def delete(self, *args):
-        self.entry.delete(*args)
-
-    def insert(self, *args):
-        self.entry.insert(*args)
-
-    def bind(self, *args, **kwargs):
-        self.entry.bind(*args, **kwargs)
-
-
-class BaseFrame(ctk.CTkFrame):
-    """Every screen's widgets live in self.content, kept centered no matter the window size."""
-
-    def __init__(self, master, app):
-        super().__init__(master, fg_color="transparent")
-        self.app = app
-        self.content = ctk.CTkFrame(self, fg_color="transparent")
-        self.content.place(relx=0.5, rely=0.5, anchor="center")
+# Screens whose title lives in the topbar, next to the logo, instead of
+# inside their own (vertically centered) content.
+SCREEN_TITLES = {
+    "login": "Login",
+    "variant_selection": "Select Variant",
+    "settings": "Settings",
+}
 
 
 class LoginFrame(BaseFrame):
     def __init__(self, master, app):
         super().__init__(master, app)
         c = self.content
-
-        ctk.CTkLabel(c, text="Login", font=ctk.CTkFont(size=24, weight="bold")).pack(pady=(40, 20))
 
         self.username_entry = ctk.CTkEntry(c, placeholder_text="Username", width=260)
         self.username_entry.pack(pady=8)
@@ -157,7 +108,8 @@ class LoginFrame(BaseFrame):
         user = self._authenticate()
 
         if user:
-            self.app.show_frame("home")
+            self.app.variant_service.load()
+            self.app.show_frame("variant_selection")
 
     def _manage_account(self):
         user = self._authenticate()
@@ -166,12 +118,16 @@ class LoginFrame(BaseFrame):
             self.app.show_frame("dashboard", user=user)
 
 
-class HomeFrame(BaseFrame):
+class MainFrame(BaseFrame):
     def __init__(self, master, app):
         super().__init__(master, app)
         c = self.content
 
         ctk.CTkLabel(c, text="Home", font=ctk.CTkFont(size=24, weight="bold")).pack(pady=(60, 8))
+
+        self.variant_label = ctk.CTkLabel(c, text="", font=ctk.CTkFont(size=13), text_color=HINT_TEXT_COLOR)
+        self.variant_label.pack(pady=(0, 8))
+
         ctk.CTkLabel(
             c,
             text="This screen is a placeholder.\nMore features will be built here later.",
@@ -179,6 +135,9 @@ class HomeFrame(BaseFrame):
             text_color=HINT_TEXT_COLOR,
             justify="center",
         ).pack(pady=(0, 20))
+
+    def on_show(self, variant_name=None):
+        self.variant_label.configure(text=f"Selected variant: {variant_name}" if variant_name else "")
 
 
 class RegisterFrame(BaseFrame):
@@ -584,6 +543,18 @@ class AdminPanelFrame(BaseFrame):
         self._refresh()
 
 
+def _position_beside(app, button, width, height, gap=8, margin=4):
+    """Anchor a popup to the left of button, bottom-aligned with it, clamped
+    to stay fully inside the app window (rather than below/off the edge)."""
+    x = button.winfo_rootx() - width - gap
+    x = max(app.winfo_rootx() + margin, x)
+
+    y = button.winfo_rooty() + button.winfo_height() - height
+    y = max(app.winfo_rooty() + margin, y)
+
+    return x, y
+
+
 class SettingsPopup(ctk.CTkToplevel):
     def __init__(self, app):
         super().__init__(app)
@@ -592,9 +563,10 @@ class SettingsPopup(ctk.CTkToplevel):
         self.overrideredirect(True)
         self.attributes("-topmost", True)
 
-        x = app.winfo_rootx() + app.winfo_width() - 210
-        y = app.winfo_rooty() + 44
-        self.geometry(f"200x180+{x}+{y}")
+        scale = app._current_scale
+        width, height = int(200 * scale), int(180 * scale)
+        x, y = _position_beside(app, app.settings_button, width, height)
+        self.geometry(f"{width}x{height}+{x}+{y}")
 
         card = ctk.CTkFrame(self, corner_radius=10, border_width=1)
         card.pack(fill="both", expand=True)
@@ -628,9 +600,10 @@ class AccountPopup(ctk.CTkToplevel):
         self.overrideredirect(True)
         self.attributes("-topmost", True)
 
-        x = app.account_button.winfo_rootx() - 60
-        y = app.account_button.winfo_rooty() + app.account_button.winfo_height() + 4
-        self.geometry(f"170x70+{x}+{y}")
+        scale = app._current_scale
+        width, height = int(170 * scale), int(70 * scale)
+        x, y = _position_beside(app, app.account_button, width, height)
+        self.geometry(f"{width}x{height}+{x}+{y}")
 
         card = ctk.CTkFrame(self, corner_radius=10, border_width=1)
         card.pack(fill="both", expand=True)
@@ -644,10 +617,12 @@ class AccountPopup(ctk.CTkToplevel):
 
 
 class App(ctk.CTk):
-    def __init__(self, auth_service):
+    def __init__(self, auth_service, variant_service, settings_service):
         super().__init__()
 
         self.auth_service = auth_service
+        self.variant_service = variant_service
+        self.settings_service = settings_service
 
         self.title("User Login")
         self.geometry("380x760")
@@ -658,12 +633,27 @@ class App(ctk.CTk):
         self.color_var = ctk.StringVar(value="Blue")
         self._settings_window = None
         self._account_window = None
+        self._current_scale = 1.0
 
         self._current_frame_name = "login"
         self._current_frame_kwargs = {}
 
+        self.demeter_logo = load_adaptive_logo("demeter_logo.png", height=34)
+
         self._build_ui()
         self.bind_all("<Button-1>", self._dismiss_popups_on_outside_click, add="+")
+        self.bind("<Configure>", self._on_resize)
+
+    def _on_resize(self, event):
+        if event.widget is not self:
+            return
+
+        scale = min(MAX_WIDGET_SCALE, max(1.0, event.width / BASE_WINDOW_WIDTH))
+        scale = round(scale * 20) / 20  # snap to nearest 0.05 to avoid thrashing while dragging
+
+        if abs(scale - self._current_scale) >= 0.05:
+            self._current_scale = scale
+            ctk.set_widget_scaling(scale)
 
     def _dismiss_popups_on_outside_click(self, event):
         widget = event.widget
@@ -687,11 +677,29 @@ class App(ctk.CTk):
         return False
 
     def _build_ui(self):
-        self.topbar = ctk.CTkFrame(self, fg_color="transparent", height=36)
+        self.topbar = ctk.CTkFrame(self, fg_color="transparent", height=44)
         self.topbar.pack(fill="x", padx=8, pady=(6, 0))
+        self.topbar.pack_propagate(False)
+
+        ctk.CTkLabel(self.topbar, image=self.demeter_logo, text="").pack(side="left", padx=(2, 0))
+
+        self.screen_title_label = ctk.CTkLabel(self.topbar, text="", font=ctk.CTkFont(size=18, weight="bold"))
+        self.screen_title_label.place(relx=0.5, rely=0.5, anchor="center")
+
+        self.container = ctk.CTkFrame(self, fg_color="transparent")
+        self.container.pack(fill="both", expand=True)
+        self.container.grid_rowconfigure(0, weight=1)
+        self.container.grid_columnconfigure(0, weight=1)
+
+        # Floating overlay pinned to the bottom-right corner of the whole
+        # window (not the topbar), so it stays put regardless of which
+        # frame is showing and however the window is resized.
+        self.icon_stack = ctk.CTkFrame(self, fg_color="transparent")
+        self.icon_stack.place(relx=1.0, rely=1.0, x=-10, y=-10, anchor="se")
+        self.icon_stack.lift()
 
         self.settings_button = ctk.CTkButton(
-            self.topbar,
+            self.icon_stack,
             text="⚙",
             width=32,
             height=28,
@@ -701,11 +709,11 @@ class App(ctk.CTk):
             text_color=ICON_TEXT_COLOR,
             command=self._toggle_settings,
         )
-        self.settings_button.pack(side="right")
+        self.settings_button.pack(side="top")
 
         self.account_button = ctk.CTkButton(
-            self.topbar,
-            text="👤",
+            self.icon_stack,
+            text="☺",
             width=32,
             height=28,
             font=ctk.CTkFont(size=16),
@@ -715,14 +723,12 @@ class App(ctk.CTk):
             command=self._toggle_account,
         )
 
-        self.container = ctk.CTkFrame(self, fg_color="transparent")
-        self.container.pack(fill="both", expand=True)
-        self.container.grid_rowconfigure(0, weight=1)
-        self.container.grid_columnconfigure(0, weight=1)
-
         self.frames = {
             "login": LoginFrame(self.container, self),
-            "home": HomeFrame(self.container, self),
+            "variant_selection": VariantSelectionFrame(self.container, self),
+            "manage_variant": ManageVariantFrame(self.container, self),
+            "settings": SettingsFrame(self.container, self),
+            "home": MainFrame(self.container, self),
             "register": RegisterFrame(self.container, self),
             "dashboard": DashboardFrame(self.container, self),
             "edit_profile": EditProfileFrame(self.container, self),
@@ -746,10 +752,11 @@ class App(ctk.CTk):
 
         frame.tkraise()
         self._update_account_icon()
+        self.screen_title_label.configure(text=SCREEN_TITLES.get(name, ""))
 
     def _update_account_icon(self):
         if self.auth_service.current_user is not None:
-            self.account_button.pack(side="right", padx=(0, 6), before=self.settings_button)
+            self.account_button.pack(side="top", pady=(4, 0), after=self.settings_button)
         else:
             self.account_button.pack_forget()
             self._close_account_popup()

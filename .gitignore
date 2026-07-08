@@ -8,3 +8,11 @@ dist/
 
 # Local user data (registered accounts)
 data/
+
+# Screen recordings / captured video and images - never commit these
+*.mp4
+*.mov
+*.avi
+*.mkv
+Video_Ref/
+saved_images/

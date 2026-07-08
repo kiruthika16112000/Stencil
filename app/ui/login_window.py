@@ -3,6 +3,7 @@ from tkinter import messagebox
 import customtkinter as ctk
 
 from app.services.auth_service import AuthError
+from app.ui.actuator_debug_screen import ActuatorDebugFrame
 from app.ui.assets import load_adaptive_logo
 from app.ui.common import (
     ADAPTIVE_TEXT_COLOR,
@@ -15,6 +16,7 @@ from app.ui.common import (
     make_strength_label,
     update_strength_label,
 )
+from app.ui.main_screen import MainFrame
 from app.ui.settings_screen import SettingsFrame
 from app.ui.variant_screen import ManageVariantFrame, VariantSelectionFrame
 
@@ -43,8 +45,9 @@ SCREEN_TITLES = {
     "login": "Login",
     "variant_selection": "Select Variant",
     "settings": "Settings",
+    "home": "Manual Inspection",
+    "debug": "Actuator Control Panel",
 }
-
 
 class LoginFrame(BaseFrame):
     def __init__(self, master, app):
@@ -116,28 +119,6 @@ class LoginFrame(BaseFrame):
 
         if user:
             self.app.show_frame("dashboard", user=user)
-
-
-class MainFrame(BaseFrame):
-    def __init__(self, master, app):
-        super().__init__(master, app)
-        c = self.content
-
-        ctk.CTkLabel(c, text="Home", font=ctk.CTkFont(size=24, weight="bold")).pack(pady=(60, 8))
-
-        self.variant_label = ctk.CTkLabel(c, text="", font=ctk.CTkFont(size=13), text_color=HINT_TEXT_COLOR)
-        self.variant_label.pack(pady=(0, 8))
-
-        ctk.CTkLabel(
-            c,
-            text="This screen is a placeholder.\nMore features will be built here later.",
-            font=ctk.CTkFont(size=13),
-            text_color=HINT_TEXT_COLOR,
-            justify="center",
-        ).pack(pady=(0, 20))
-
-    def on_show(self, variant_name=None):
-        self.variant_label.configure(text=f"Selected variant: {variant_name}" if variant_name else "")
 
 
 class RegisterFrame(BaseFrame):
@@ -617,12 +598,14 @@ class AccountPopup(ctk.CTkToplevel):
 
 
 class App(ctk.CTk):
-    def __init__(self, auth_service, variant_service, settings_service):
+    def __init__(self, auth_service, variant_service, settings_service, actuator_service, camera):
         super().__init__()
 
         self.auth_service = auth_service
         self.variant_service = variant_service
         self.settings_service = settings_service
+        self.actuator_service = actuator_service
+        self.camera = camera
 
         self.title("User Login")
         self.geometry("380x760")
@@ -634,6 +617,8 @@ class App(ctk.CTk):
         self._settings_window = None
         self._account_window = None
         self._current_scale = 1.0
+        self._resize_debounce_job = None
+        self._pending_resize_width = None
 
         self._current_frame_name = "login"
         self._current_frame_kwargs = {}
@@ -643,12 +628,45 @@ class App(ctk.CTk):
         self._build_ui()
         self.bind_all("<Button-1>", self._dismiss_popups_on_outside_click, add="+")
         self.bind("<Configure>", self._on_resize)
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
+
+        # Open filling the screen on every launch - the user can still
+        # minimize, restore-down, or drag-resize afterward like any normal
+        # window (self.geometry above is what "restore down" returns to).
+        # On Windows, state("zoomed") can silently no-op if requested before
+        # the window has actually been realized by the OS, so force the
+        # window to finish being created first, then apply it a beat later.
+        self.update_idletasks()
+        self.after(10, lambda: self.state("zoomed"))
+
+    def _on_close(self):
+        home_frame = self.frames.get("home")
+        if home_frame is not None and hasattr(home_frame, "shutdown"):
+            home_frame.shutdown()
+
+        self.destroy()
 
     def _on_resize(self, event):
         if event.widget is not self:
             return
 
-        scale = min(MAX_WIDGET_SCALE, max(1.0, event.width / BASE_WINDOW_WIDTH))
+        frame = self.frames.get(self._current_frame_name)
+        if frame is not None and hasattr(frame, "on_app_resize"):
+            frame.on_app_resize()
+
+        # A maximize/restore or drag-resize can fire many Configure events
+        # in quick succession; rescaling every pre-built screen's widgets on
+        # every single one of them is expensive enough to stall the UI, so
+        # only do it once the size has settled.
+        self._pending_resize_width = event.width
+        if self._resize_debounce_job is not None:
+            self.after_cancel(self._resize_debounce_job)
+        self._resize_debounce_job = self.after(120, self._apply_pending_scale)
+
+    def _apply_pending_scale(self):
+        self._resize_debounce_job = None
+
+        scale = min(MAX_WIDGET_SCALE, max(1.0, self._pending_resize_width / BASE_WINDOW_WIDTH))
         scale = round(scale * 20) / 20  # snap to nearest 0.05 to avoid thrashing while dragging
 
         if abs(scale - self._current_scale) >= 0.05:
@@ -729,6 +747,7 @@ class App(ctk.CTk):
             "manage_variant": ManageVariantFrame(self.container, self),
             "settings": SettingsFrame(self.container, self),
             "home": MainFrame(self.container, self),
+            "debug": ActuatorDebugFrame(self.container, self),
             "register": RegisterFrame(self.container, self),
             "dashboard": DashboardFrame(self.container, self),
             "edit_profile": EditProfileFrame(self.container, self),

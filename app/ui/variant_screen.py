@@ -52,6 +52,15 @@ class VariantSelectionFrame(BaseFrame):
             text_color=ADAPTIVE_TEXT_COLOR,
             command=self._manage_variants,
         ).pack(pady=4)
+        ctk.CTkButton(
+            c,
+            text="Diagnostics",
+            width=260,
+            fg_color="transparent",
+            border_width=1,
+            text_color=ADAPTIVE_TEXT_COLOR,
+            command=self._open_diagnostics,
+        ).pack(pady=4)
 
     def on_show(self):
         self.status_label.configure(text="")
@@ -85,6 +94,9 @@ class VariantSelectionFrame(BaseFrame):
 
     def _manage_variants(self):
         self.app.show_frame("manage_variant")
+
+    def _open_diagnostics(self):
+        self.app.show_frame("debug")
 
 
 class ManageVariantFrame(BaseFrame):

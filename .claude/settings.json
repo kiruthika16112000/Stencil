@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(timeout 10 python -c ' *)",
+      "Bash(timeout 15 python -c ' *)",
+      "Bash(python -c \"import numpy; print\\(numpy.__version__\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(python \"C:\\\\Users\\\\KIRUTH~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Stencil\\\\64348330-823f-497e-a79f-298e22c5c883\\\\scratchpad\\\\preview_login.py\")",
+      "Bash(rm -rf \"dist/Stencil Inspection.exe\" \"build/Stencil Inspection\" \"Stencil Inspection.spec\")",
+      "Bash(python -m PyInstaller --name \"Stencil Inspection\" --onefile --windowed --add-data \"data/demeter_logo.png;data\" --add-data \"data/stencil ref.jpg;data\" main.py)",
+      "Bash(echo \"exit code: $?\")",
+      "Bash(python -m PyInstaller --name \"Stencil Inspection\" --onefile --windowed --add-data \"data/demeter_logo.png;data\" --add-data \"data/laser-cut-stencil.jpg;data\" main.py)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('d:/Stencil/app/ui/hero.py', encoding='utf-8'\\).read\\(\\)\\); ast.parse\\(open\\('d:/Stencil/app/ui/login_window.py', encoding='utf-8'\\).read\\(\\)\\); print\\('syntax ok'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('d:/Stencil/app/ui/login_window.py', encoding='utf-8'\\).read\\(\\)\\); print\\('syntax ok'\\)\")",
+      "Bash(python \"C:/Users/KIRUTH~1/AppData/Local/Temp/claude/d--Stencil/e560e37f-9e18-41d5-9618-307de52dfcaa/scratchpad/preview_login2.py\")",
+      "Bash(python \"C:/Users/KIRUTH~1/AppData/Local/Temp/claude/d--Stencil/e560e37f-9e18-41d5-9618-307de52dfcaa/scratchpad/preview_account_popup.py\")",
+      "Bash(python \"C:/Users/KIRUTH~1/AppData/Local/Temp/claude/d--Stencil/e560e37f-9e18-41d5-9618-307de52dfcaa/scratchpad/preview_settings.py\")",
+      "Bash(taskkill //F //IM python.exe //T)",
+      "Bash(timeout 30 python \"C:/Users/KIRUTH~1/AppData/Local/Temp/claude/d--Stencil/e560e37f-9e18-41d5-9618-307de52dfcaa/scratchpad/preview_settings.py\")",
+      "Bash(echo \"exit: $?\")",
+      "Bash(timeout 30 python \"C:/Users/KIRUTH~1/AppData/Local/Temp/claude/d--Stencil/e560e37f-9e18-41d5-9618-307de52dfcaa/scratchpad/preview_diagnostics.py\")",
+      "Bash(python -m PyInstaller --name \"Stencil Inspection\" --onefile --windowed --add-data \"data/demeter_logo.png;data\" --add-data \"data/laser-cut-stencil.jpg;data\" --add-data \"data/UI Reference;data/UI Reference\" main.py)",
+      "Bash(timeout 30 python \"C:/Users/KIRUTH~1/AppData/Local/Temp/claude/d--Stencil/e560e37f-9e18-41d5-9618-307de52dfcaa/scratchpad/preview_main.py\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\KIRUTH~1\\AppData\\Local\\Temp\\claude\\d--Stencil\\64348330-823f-497e-a79f-298e22c5c883\\scratchpad"
+    ]
+  }
+}

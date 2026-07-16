@@ -3,7 +3,18 @@ from tkinter import messagebox
 import customtkinter as ctk
 
 from app.services.variant_service import VariantError
-from app.ui.common import ADAPTIVE_TEXT_COLOR, BaseFrame, ERROR_TEXT_COLOR, HINT_TEXT_COLOR, SUCCESS_TEXT_COLOR
+from app.ui.icons import gear_icon
+from app.ui.common import (
+    BaseFrame,
+    CARD_BORDER_COLOR,
+    ERROR_TEXT_COLOR,
+    HINT_TEXT_COLOR,
+    SUCCESS_TEXT_COLOR,
+    link_button,
+    primary_button,
+    secondary_button,
+    styled_option_menu,
+)
 
 NO_VARIANTS_PLACEHOLDER = "No variants yet"
 
@@ -13,54 +24,52 @@ class VariantSelectionFrame(BaseFrame):
         super().__init__(master, app)
         c = self.content
 
+        ctk.CTkLabel(c, text="Select Variant", font=ctk.CTkFont(size=22, weight="bold")).pack(pady=(0, 2))
         ctk.CTkLabel(
             c,
             text="Choose an existing variant to continue,\nor manage the variant list below.",
             font=ctk.CTkFont(size=12),
             text_color=HINT_TEXT_COLOR,
+            width=260,
             justify="center",
-        ).pack(pady=(20, 20))
+        ).pack(pady=(0, 20))
 
         ctk.CTkLabel(c, text="Variant", font=ctk.CTkFont(size=12), anchor="w", width=260).pack()
         self.variant_var = ctk.StringVar(value=NO_VARIANTS_PLACEHOLDER)
-        self.variant_menu = ctk.CTkOptionMenu(
-            c, values=[NO_VARIANTS_PLACEHOLDER], variable=self.variant_var, width=260, command=self._on_variant_change
+        self.variant_menu = styled_option_menu(
+            c,
+            values=[NO_VARIANTS_PLACEHOLDER],
+            variable=self.variant_var,
+            width=260,
+            height=36,
+            command=self._on_variant_change,
         )
-        self.variant_menu.pack(pady=(2, 10))
+        self.variant_menu.pack(pady=(4, 10))
 
         self.status_label = ctk.CTkLabel(c, text="", text_color=ERROR_TEXT_COLOR)
         self.status_label.pack(pady=(0, 8))
 
-        ctk.CTkButton(c, text="Continue", width=260, command=self._continue).pack(pady=(8, 8))
-        self.settings_button = ctk.CTkButton(
-            c,
-            text="Settings",
-            width=260,
-            fg_color="transparent",
-            border_width=1,
-            text_color=ADAPTIVE_TEXT_COLOR,
-            state="disabled",
-            command=self._open_settings,
+        primary_button(c, "Continue  →", self._continue, height=40).pack(pady=(8, 8))
+        secondary_button(c, "\U0001F5C2  Manage Variants", self._manage_variants).pack(pady=4)
+
+        divider_row = ctk.CTkFrame(c, fg_color="transparent")
+        divider_row.pack(fill="x", pady=(16, 10))
+        ctk.CTkFrame(divider_row, fg_color=CARD_BORDER_COLOR, height=1).pack(fill="x")
+
+        # Settings and Diagnostics jump to their own big, full-page screens
+        # (not the compact card flow above) - grouped side by side below a
+        # divider to set them apart from the Continue/Manage Variants pair.
+        big_screen_row = ctk.CTkFrame(c, fg_color="transparent")
+        big_screen_row.pack()
+
+        self.settings_button = secondary_button(
+            big_screen_row, "  Settings", self._open_settings, width=125, image=gear_icon(size=18)
         )
-        self.settings_button.pack(pady=4)
-        ctk.CTkButton(
-            c,
-            text="Manage Variants",
-            width=260,
-            fg_color="transparent",
-            border_width=1,
-            text_color=ADAPTIVE_TEXT_COLOR,
-            command=self._manage_variants,
-        ).pack(pady=4)
-        ctk.CTkButton(
-            c,
-            text="Diagnostics",
-            width=260,
-            fg_color="transparent",
-            border_width=1,
-            text_color=ADAPTIVE_TEXT_COLOR,
-            command=self._open_diagnostics,
-        ).pack(pady=4)
+        self.settings_button.configure(state="disabled")
+        self.settings_button.pack(side="left", padx=(0, 5))
+        secondary_button(big_screen_row, "\U0001F527  Diagnostics", self._open_diagnostics, width=125).pack(
+            side="left", padx=(5, 0)
+        )
 
     def on_show(self):
         self.status_label.configure(text="")
@@ -104,24 +113,25 @@ class ManageVariantFrame(BaseFrame):
         super().__init__(master, app)
         c = self.content
 
-        ctk.CTkLabel(c, text="Manage Variants", font=ctk.CTkFont(size=24, weight="bold")).pack(pady=(30, 4))
+        ctk.CTkLabel(c, text="Manage Variants", font=ctk.CTkFont(size=22, weight="bold")).pack(pady=(0, 2))
         ctk.CTkLabel(
             c,
             text="Add, edit, or remove variants below,\nthen Save to write them to disk.",
             font=ctk.CTkFont(size=12),
             text_color=HINT_TEXT_COLOR,
+            width=260,
             justify="center",
-        ).pack(pady=(0, 16))
+        ).pack(pady=(0, 18))
 
         ctk.CTkLabel(c, text="Model", font=ctk.CTkFont(size=12), anchor="w", width=260).pack()
         input_row = ctk.CTkFrame(c, fg_color="transparent")
-        input_row.pack(pady=(2, 8))
+        input_row.pack(pady=(4, 8))
 
-        self.model_entry = ctk.CTkEntry(input_row, placeholder_text="Type variant name here", width=190)
+        self.model_entry = ctk.CTkEntry(input_row, placeholder_text="Type variant name here", width=194, height=36)
         self.model_entry.pack(side="left")
         self.model_entry.bind("<Return>", lambda _event: self._add())
 
-        ctk.CTkButton(input_row, text="Add", width=60, command=self._add).pack(side="left", padx=(6, 0))
+        primary_button(input_row, "Add", self._add, width=60, height=36).pack(side="left", padx=(6, 0))
 
         self.status_label = ctk.CTkLabel(c, text="", text_color=ERROR_TEXT_COLOR)
         self.status_label.pack(pady=(0, 8))
@@ -129,16 +139,8 @@ class ManageVariantFrame(BaseFrame):
         self.list_frame = ctk.CTkScrollableFrame(c, width=300, height=280)
         self.list_frame.pack(pady=(0, 12))
 
-        ctk.CTkButton(c, text="Save", width=260, command=self._save).pack(pady=(4, 4))
-        ctk.CTkButton(
-            c,
-            text="Back to Variant Selection",
-            width=260,
-            fg_color="transparent",
-            border_width=1,
-            text_color=ADAPTIVE_TEXT_COLOR,
-            command=self._back,
-        ).pack(pady=4)
+        primary_button(c, "Save", self._save, height=40).pack(pady=(4, 4))
+        link_button(c, "Back to Variant Selection", self._back).pack(pady=4)
 
     def on_show(self):
         self.status_label.configure(text="")
@@ -230,15 +232,8 @@ class RenameVariantDialog(ctk.CTkToplevel):
         button_row = ctk.CTkFrame(self, fg_color="transparent")
         button_row.pack(pady=12)
 
-        ctk.CTkButton(button_row, text="Save", width=100, command=self._save).pack(side="left", padx=6)
-        ctk.CTkButton(
-            button_row,
-            text="Cancel",
-            width=100,
-            fg_color="transparent",
-            border_width=1,
-            command=self.destroy,
-        ).pack(side="left", padx=6)
+        primary_button(button_row, "Save", self._save, width=100).pack(side="left", padx=6)
+        secondary_button(button_row, "Cancel", self.destroy, width=100).pack(side="left", padx=6)
 
     def _save(self):
         new_name = self.entry.get()

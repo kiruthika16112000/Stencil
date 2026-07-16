@@ -4,7 +4,14 @@ from datetime import datetime
 import customtkinter as ctk
 from PIL import Image
 
-from app.ui.common import BaseFrame, ERROR_TEXT_COLOR, HINT_TEXT_COLOR, SUCCESS_TEXT_COLOR
+from app.ui.common import (
+    BaseFrame,
+    CARD_BORDER_COLOR,
+    ERROR_TEXT_COLOR,
+    HINT_TEXT_COLOR,
+    SUCCESS_TEXT_COLOR,
+    primary_button,
+)
 
 # Jog step and travel limits for the arrow-key/arrow-button jog controls.
 # Ported as-is from the working control app.
@@ -43,7 +50,9 @@ class MainFrame(BaseFrame):
 
         header = ctk.CTkFrame(self, fg_color="transparent")
         header.pack(fill="x", padx=16, pady=(10, 4))
-        self.variant_label = ctk.CTkLabel(header, text="", font=ctk.CTkFont(size=12), text_color=HINT_TEXT_COLOR)
+        self.variant_label = ctk.CTkLabel(
+            header, text="", font=ctk.CTkFont(size=16, weight="bold"), text_color=HINT_TEXT_COLOR
+        )
         self.variant_label.pack(side="right")
 
         self.status_label = ctk.CTkLabel(self, text="Press START to begin", text_color=HINT_TEXT_COLOR)
@@ -55,14 +64,16 @@ class MainFrame(BaseFrame):
         # This guarantees the buttons stay visible regardless of monitor
         # resolution or DPI scaling, instead of relying on a pre-computed
         # size budget.
-        self.camera_area = ctk.CTkFrame(self, fg_color=("gray85", "gray17"))
+        self.camera_area = ctk.CTkFrame(
+            self, fg_color=("gray85", "gray17"), corner_radius=14, border_width=1, border_color=CARD_BORDER_COLOR
+        )
         self.camera_area.pack(fill="both", expand=True, padx=16, pady=(0, 10))
 
         self.feed_label = ctk.CTkLabel(self.camera_area, text="Press START to begin", text_color=HINT_TEXT_COLOR)
         self.feed_label.place(relx=0.5, rely=0.5, anchor="center")
 
-        arrow_pad = ctk.CTkFrame(self.camera_area, fg_color="transparent")
-        arrow_pad.place(relx=0.0, rely=1.0, x=8, y=-8, anchor="sw")
+        arrow_pad = ctk.CTkFrame(self.camera_area, fg_color="transparent", corner_radius=12)
+        arrow_pad.place(relx=0.0, rely=1.0, x=12, y=-12, anchor="sw")
 
         ctk.CTkButton(arrow_pad, text="▲", width=36, height=30, command=lambda: self._move_y(-STEP)).grid(
             row=0, column=1, padx=2, pady=2
@@ -90,7 +101,7 @@ class MainFrame(BaseFrame):
 
         button_row = ctk.CTkFrame(self, fg_color="transparent")
         button_row.pack(pady=(0, 16))
-        self.start_button = ctk.CTkButton(button_row, text="START", width=100, command=self._start_system)
+        self.start_button = primary_button(button_row, "START", self._start_system, width=100)
         self.start_button.pack(side="left", padx=6)
         ctk.CTkButton(
             button_row, text="SAVE", width=100, fg_color="#2e7d32", hover_color="#1b5e20", command=self._save_image

@@ -11,19 +11,37 @@ from app.models.settings import (
     ReportPathSettings,
     Settings,
 )
-from app.ui.common import ADAPTIVE_TEXT_COLOR, BaseFrame, HINT_TEXT_COLOR, IPAddressEntry, PasswordEntry, SUCCESS_TEXT_COLOR
+from app.ui.common import (
+    CARD_BORDER_COLOR,
+    CARD_COLOR,
+    HINT_TEXT_COLOR,
+    IPAddressEntry,
+    BaseFrame,
+    PasswordEntry,
+    SUCCESS_TEXT_COLOR,
+    primary_button,
+    primary_color,
+    secondary_button,
+    styled_option_menu,
+)
 from app.ui.ports import list_serial_ports
 
 NO_PORTS_PLACEHOLDER = "No ports found"
 
-SECTION_TITLE_COLOR = ("#1e6eb5", "#4da3e0")
-
 
 def _section(master, title):
-    frame = ctk.CTkFrame(master, border_width=1, corner_radius=10)
+    frame = ctk.CTkFrame(master, fg_color=CARD_COLOR, border_width=1, border_color=CARD_BORDER_COLOR, corner_radius=14)
+
+    title_row = ctk.CTkFrame(frame, fg_color="transparent")
+    title_row.pack(fill="x", padx=14, pady=(12, 4))
+
+    ctk.CTkFrame(title_row, fg_color=primary_color(), width=4, height=16, corner_radius=2).pack(
+        side="left", padx=(0, 8)
+    )
     ctk.CTkLabel(
-        frame, text=title, font=ctk.CTkFont(size=12, weight="bold"), text_color=SECTION_TITLE_COLOR, anchor="w"
-    ).pack(fill="x", padx=14, pady=(10, 4))
+        title_row, text=title, font=ctk.CTkFont(size=12, weight="bold"), text_color=primary_color(), anchor="w"
+    ).pack(side="left")
+
     return frame
 
 
@@ -97,15 +115,8 @@ class SettingsFrame(BaseFrame):
         footer = ctk.CTkFrame(self, fg_color="transparent")
         footer.pack(fill="x", padx=16, pady=(0, 12))
 
-        ctk.CTkButton(
-            footer,
-            text="Cancel",
-            fg_color="transparent",
-            border_width=1,
-            text_color=ADAPTIVE_TEXT_COLOR,
-            command=self._cancel,
-        ).pack(side="right", padx=(6, 0))
-        ctk.CTkButton(footer, text="Save Settings", command=self._save).pack(side="right")
+        secondary_button(footer, "Cancel", self._cancel, width=100).pack(side="right", padx=(6, 0))
+        primary_button(footer, "Save Settings", self._save, width=140).pack(side="right")
 
     def _build_left(self, parent):
         additional = _section(parent, "ADDITIONAL SETTINGS")
@@ -124,7 +135,7 @@ class SettingsFrame(BaseFrame):
         db_row.pack(fill="x", padx=14, pady=(4, 10))
         ctk.CTkLabel(db_row, text="Database", font=ctk.CTkFont(size=11), width=150, anchor="w").pack(side="left")
         self.database_var = ctk.StringVar(value="Poka-Yoke")
-        ctk.CTkOptionMenu(
+        styled_option_menu(
             db_row, values=["Poka-Yoke", "Production", "Test"], variable=self.database_var, width=200
         ).pack(side="left")
 
@@ -144,7 +155,7 @@ class SettingsFrame(BaseFrame):
         device.pack(fill="x", pady=(0, 10))
         self.f_plc = _ip_field_row(device, "PLC")
         self.f_port = _field_row(device, "Port")
-        self.f_camera_ip = _field_row(device, "Camera IP")
+        self.f_camera_ip = _ip_field_row(device, "Camera IP")
         self.light_com_var, self.light_com_menu = self._port_row(device, "Light Port")
         self.f_host_addr = _field_row(device, "Host Address")
         self.f_db_addr = _field_row(device, "Database")
@@ -193,7 +204,7 @@ class SettingsFrame(BaseFrame):
         ctk.CTkLabel(row, text=label_text, font=ctk.CTkFont(size=11), width=150, anchor="w").pack(side="left")
 
         var = ctk.StringVar(value=NO_PORTS_PLACEHOLDER)
-        menu = ctk.CTkOptionMenu(row, values=[NO_PORTS_PLACEHOLDER], variable=var, width=150)
+        menu = styled_option_menu(row, values=[NO_PORTS_PLACEHOLDER], variable=var, width=150)
         menu.pack(side="left")
 
         ctk.CTkButton(row, text="Scan", width=60, command=lambda: self._refresh_light_com_ports()).pack(

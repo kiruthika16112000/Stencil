@@ -10,7 +10,15 @@ from app.hardware.registers import (
     DO_X_AXIS,
     DO_Y_AXIS,
 )
-from app.ui.common import ADAPTIVE_TEXT_COLOR, BaseFrame, ERROR_TEXT_COLOR, HINT_TEXT_COLOR
+from app.ui.common import (
+    ADAPTIVE_TEXT_COLOR,
+    BaseFrame,
+    CARD_BORDER_COLOR,
+    ERROR_TEXT_COLOR,
+    HINT_TEXT_COLOR,
+    primary_button,
+    secondary_button,
+)
 
 DI_COLUMNS = [
     ("DI PORT 0", DI_PORT_0),
@@ -27,9 +35,11 @@ DO_COLUMNS = [
 
 # Section header colors - one accent per section type, so the seven
 # columns plus the two bottom panels are easy to tell apart at a glance.
+# ACTUATOR uses the app's primary indigo/violet accent to mark it as the
+# main action panel; DO/DI/LIGHT stay in their own distinct hues.
 DO_HEADER_COLOR = "#c9862f"
 DI_HEADER_COLOR = "#2f9e6f"
-ACTUATOR_HEADER_COLOR = "#1f6aa5"
+ACTUATOR_HEADER_COLOR = "#5B4FE0"
 LIGHT_HEADER_COLOR = "#8e44ad"
 HEADER_TEXT_COLOR = "white"
 
@@ -39,8 +49,6 @@ DI_ON_CRITICAL = ("#d1fae5", "#047857")
 DI_OFF_CRITICAL = ("#fee2e2", "#991b1b")
 DO_ON_COLOR = ("#1f9d55", "#1f9d55")
 DO_OFF_COLOR = ("gray80", "gray30")
-
-POSITION_COLOR = ("#1f6aa5", "#3b8ed0")
 
 
 class ActuatorDebugFrame(BaseFrame):
@@ -57,15 +65,7 @@ class ActuatorDebugFrame(BaseFrame):
         self._do_widgets = {}
         self._di_rows = {}
 
-        ctk.CTkButton(
-            self,
-            text="< Back",
-            width=80,
-            fg_color="transparent",
-            border_width=1,
-            text_color=ADAPTIVE_TEXT_COLOR,
-            command=self._back,
-        ).pack(anchor="w", padx=12, pady=(10, 6))
+        secondary_button(self, "< Back", self._back, width=80).pack(anchor="w", padx=12, pady=(10, 6))
 
         io_row = ctk.CTkFrame(self, fg_color="transparent")
         io_row.pack(fill="x", padx=10)
@@ -89,14 +89,9 @@ class ActuatorDebugFrame(BaseFrame):
         self.status_label = ctk.CTkLabel(footer, text="Ready", text_color=HINT_TEXT_COLOR, anchor="w")
         self.status_label.pack(side="left")
 
-        self.footer_position_label = ctk.CTkLabel(
-            footer, text="X: 0   Y: 0", font=ctk.CTkFont(weight="bold"), text_color=POSITION_COLOR
-        )
-        self.footer_position_label.pack(side="right")
-
     # ---- column builders ----
     def _build_column_frame(self, master, title, header_color):
-        col = ctk.CTkFrame(master, border_width=1, corner_radius=8)
+        col = ctk.CTkFrame(master, border_width=1, border_color=CARD_BORDER_COLOR, corner_radius=10)
         col.pack(side="left", fill="both", expand=True, padx=4)
 
         header = ctk.CTkFrame(col, fg_color=header_color, corner_radius=0)
@@ -146,7 +141,7 @@ class ActuatorDebugFrame(BaseFrame):
         return rows
 
     def _build_actuator_section(self, master):
-        section = ctk.CTkFrame(master, border_width=1, corner_radius=8)
+        section = ctk.CTkFrame(master, border_width=1, border_color=CARD_BORDER_COLOR, corner_radius=10)
         section.pack(side="left", fill="both", expand=True, padx=(0, 6))
 
         header = ctk.CTkFrame(section, fg_color=ACTUATOR_HEADER_COLOR)
@@ -188,7 +183,7 @@ class ActuatorDebugFrame(BaseFrame):
         speed_entry.insert(0, "10000")
         speed_entry.pack(fill="x")
 
-        ctk.CTkButton(box, text=f"Set {title}", command=lambda: self._set_axis(axis)).pack(fill="x", pady=(8, 4))
+        primary_button(box, f"Set {title}", lambda: self._set_axis(axis), width=140).pack(fill="x", pady=(8, 4))
 
         feedback = ctk.CTkLabel(box, text=f"{title}: 0", font=ctk.CTkFont(size=13, weight="bold"))
         feedback.pack(pady=(0, 4))
@@ -196,7 +191,7 @@ class ActuatorDebugFrame(BaseFrame):
         return pos_entry, speed_entry, feedback
 
     def _build_light_control_section(self, master):
-        section = ctk.CTkFrame(master, border_width=1, corner_radius=8, width=220)
+        section = ctk.CTkFrame(master, border_width=1, border_color=CARD_BORDER_COLOR, corner_radius=10, width=220)
         section.pack(side="left", fill="y", padx=(6, 0))
         section.pack_propagate(False)
 
@@ -219,7 +214,7 @@ class ActuatorDebugFrame(BaseFrame):
         self.light_brightness_entry.insert(0, "0")
         self.light_brightness_entry.pack(fill="x", pady=(0, 8))
 
-        ctk.CTkButton(body, text="Set Brightness", command=self._set_brightness).pack(fill="x", pady=(0, 8))
+        primary_button(body, "Set Brightness", self._set_brightness, width=140).pack(fill="x", pady=(0, 8))
         ctk.CTkButton(
             body, text="Live Video", fg_color="#2e7d32", hover_color="#1b5e20", command=self._toggle_live_video
         ).pack(fill="x")
@@ -307,7 +302,6 @@ class ActuatorDebugFrame(BaseFrame):
 
         self.lbl_feedback_x.configure(text=f"X Axis: {x_position}")
         self.lbl_feedback_y.configure(text=f"Y Axis: {y_position}")
-        self.footer_position_label.configure(text=f"X: {x_position}   Y: {y_position}")
 
         self._update_job = self.after(300, self._update_ui)
 

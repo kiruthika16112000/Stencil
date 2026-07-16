@@ -40,6 +40,21 @@ def _silhouette(image, rgb):
     return solid
 
 
+def load_fixed_logo(filename, height=28, rgb=(255, 255, 255)):
+    """Like load_adaptive_logo, but always renders as a solid-color
+    silhouette regardless of the app's light/dark appearance mode - for a
+    panel whose own background doesn't follow that mode (the Login screen's
+    always-dark hero panel)."""
+    path = os.path.join(ASSETS_DIR, filename)
+    original = Image.open(path).convert("RGB")
+
+    width = max(1, round(original.width * (height / original.height)))
+    original = original.resize((width, height), Image.LANCZOS)
+
+    silhouette = _silhouette(original, rgb)
+    return ctk.CTkImage(light_image=silhouette, dark_image=silhouette, size=(width, height))
+
+
 def load_adaptive_logo(filename, height=28):
     """Loads a logo file as a CTkImage with the background removed: the
     original full-color artwork (background dropped) in light mode, and a
